@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -19,6 +20,7 @@ func NewSSMRemoteTunnelDataSource() datasource.DataSource {
 
 // SSMRemoteTunnelDataSource defines the data source implementation.
 type SSMRemoteTunnelDataSource struct {
+	svc *ssm.Client
 }
 
 // SSMRemoteTunnelDataSourceModel describes the data source data model.
@@ -75,7 +77,17 @@ func (d *SSMRemoteTunnelDataSource) Configure(ctx context.Context, req datasourc
 		return
 	}
 
-	// INIT AWS SDK
+	svc, ok := req.ProviderData.(*ssm.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.svc = svc
 }
 
 func (d *SSMRemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -89,6 +101,7 @@ func (d *SSMRemoteTunnelDataSource) Read(ctx context.Context, req datasource.Rea
 	}
 
 	err := ssmtunnels.StartRemoteTunnel(context.Background(), ssmtunnels.RemoteTunnelConfig{
+		Client:     d.svc,
 		Target:     data.Target.ValueString(),
 		Region:     data.Region.ValueString(),
 		RemoteHost: data.RemoteHost.ValueString(),
@@ -103,8 +116,6 @@ func (d *SSMRemoteTunnelDataSource) Read(ctx context.Context, req datasource.Rea
 		)
 	}
 	// TODO: Figure out how to store a reference to the tunnel so it can be stopped later
-
-	// NOTE: There probably isn't anything to do here, as the tunnel is started in the Configure function
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

@@ -5,51 +5,63 @@ package provider
 
 import (
 	"context"
-	"log"
-	"net/http"
+	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-provider-scaffolding-framework/internal/ssmtunnels"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
+// Ensure AwsSSMTunnelsProvider satisfies various provider interfaces.
+var _ provider.Provider = &AwsSSMTunnelsProvider{}
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+// AwsSSMTunnelsProvider defines the provider implementation.
+type AwsSSMTunnelsProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
+// AwsSSMTunnelsProviderModel describes the provider data model.
+type AwsSSMTunnelsProviderModel struct {
+	AwsRegion types.String `tfsdk:"aws_region"`
+	AwsKey    types.String `tfsdk:"aws_key"`
+	AwsSecret types.String `tfsdk:"aws_secret"`
 }
 
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+func (p *AwsSSMTunnelsProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "aws_ssm_tunnels"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *AwsSSMTunnelsProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+	// TODO: Figure out how to support more auth modes. Maybe import from the AWS provider
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
-				Optional:            true,
+			"aws_region": schema.StringAttribute{
+				MarkdownDescription: "The AWS region to use for the SSM tunnel",
+				Optional:            false,
 			},
+			"aws_key": schema.StringAttribute{
+				MarkdownDescription: "The AWS Access Key ID to use for the SSM tunnel",
+				Optional:            false,
+			},
+			"aws_secret": schema.StringAttribute{
+				MarkdownDescription: "The AWS Secret Access Key to use for the SSM tunnel",
+				Optional:            false,
+			},
+			// TODO: Add session token
 		},
 	}
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var data AwsSSMTunnelsProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
@@ -57,43 +69,40 @@ func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.Config
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	// config.Config{
+	// 	Region: data.AwsRegion.String(),
+	// 	Credentials: config.Credentials{
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
-	resp.DataSourceData = client
-	resp.ResourceData = client
-}
+	// }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{
-		NewExampleResource,
+	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(data.AwsRegion.String()))
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to load AWS configuration",
+			fmt.Sprintf("Error: %s", err),
+		)
 	}
+	svc := ssm.NewFromConfig(awsCfg)
+	// NOTE: We should make a "client" struct which hides the SSM client, and has a method to start a tunnel and it keeps track of the tunnel session
+	// It should also handle the cancellation via context signalling
+
+	resp.DataSourceData = svc
+	resp.ResourceData = svc
 }
 
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *AwsSSMTunnelsProvider) Resources(ctx context.Context) []func() resource.Resource {
+	return []func() resource.Resource{}
+}
+
+func (p *AwsSSMTunnelsProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewExampleDataSource,
+		NewSSMRemoteTunnelDataSource,
 	}
 }
 
 func New(version string) func() provider.Provider {
-
-	err := ssmtunnels.StartRemoteTunnel(context.Background(), ssmtunnels.RemoteTunnelConfig{
-		Target:     "string",
-		Region:     "string",
-		RemoteHost: "string",
-		RemotePort: 0,
-		LocalPort:  0,
-	})
-
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
 	return func() provider.Provider {
-		return &ScaffoldingProvider{
+		return &AwsSSMTunnelsProvider{
 			version: version,
 		}
 	}

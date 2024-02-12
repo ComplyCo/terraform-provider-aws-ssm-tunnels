@@ -8,13 +8,13 @@ import (
 	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	pluginSession "github.com/aws/session-manager-plugin/src/sessionmanagerplugin/session"
 	_ "github.com/aws/session-manager-plugin/src/sessionmanagerplugin/session/portsession"
 )
 
 type RemoteTunnelConfig struct {
+	Client     *ssm.Client
 	Target     string
 	Region     string
 	RemoteHost string
@@ -39,12 +39,6 @@ func StartRemoteTunnel(ctx context.Context, cfg RemoteTunnelConfig) error {
 		return fmt.Errorf("localPort must be set")
 	}
 
-	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-east-2"))
-	if err != nil {
-		return err
-	}
-	svc := ssm.NewFromConfig(awsCfg)
-
 	startSessionInput := ssm.StartSessionInput{
 		Target:       &cfg.Target,
 		DocumentName: aws.String("AWS-StartPortForwardingSessionToRemoteHost"),
@@ -61,7 +55,7 @@ func StartRemoteTunnel(ctx context.Context, cfg RemoteTunnelConfig) error {
 		},
 	}
 
-	startSessionOutput, err := svc.StartSession(ctx, &startSessionInput)
+	startSessionOutput, err := cfg.Client.StartSession(ctx, &startSessionInput)
 	if err != nil {
 		return err
 	}
@@ -70,6 +64,9 @@ func StartRemoteTunnel(ctx context.Context, cfg RemoteTunnelConfig) error {
 	if err != nil {
 		return err
 	}
+
+	// TODO: Add a way to terminate the session
+	// cfg.Client.TerminateSession()
 
 	args := []string{
 		"session-manager-plugin",
