@@ -5,6 +5,7 @@ package provider
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -12,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-provider-scaffolding-framework/internal/ssmtunnels"
 )
 
 // Ensure ScaffoldingProvider satisfies various provider interfaces.
@@ -77,6 +79,19 @@ func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasour
 }
 
 func New(version string) func() provider.Provider {
+
+	err := ssmtunnels.StartRemoteTunnel(context.Background(), ssmtunnels.RemoteTunnelConfig{
+		Target:     "string",
+		Region:     "string",
+		RemoteHost: "string",
+		RemotePort: 0,
+		LocalPort:  0,
+	})
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	return func() provider.Provider {
 		return &ScaffoldingProvider{
 			version: version,
