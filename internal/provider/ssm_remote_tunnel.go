@@ -45,23 +45,23 @@ func (d *SSMRemoteTunnelDataSource) Schema(ctx context.Context, req datasource.S
 		Attributes: map[string]schema.Attribute{
 			"target": schema.StringAttribute{
 				MarkdownDescription: "The target to start the remote tunnel, such as an instance ID",
-				Optional:            false,
+				Required:            true,
 			},
 			"remote_host": schema.StringAttribute{
 				MarkdownDescription: "The DNS name or IP address of the remote host",
-				Optional:            false,
+				Required:            true,
 			},
 			"remote_port": schema.Int64Attribute{
 				MarkdownDescription: "The port number of the remote host",
-				Optional:            false,
+				Required:            true,
 			},
 			"local_port": schema.Int64Attribute{
 				MarkdownDescription: "The local port number to use for the tunnel",
-				Optional:            false,
+				Required:            true,
 			},
 			"region": schema.StringAttribute{
 				MarkdownDescription: "The AWS region to use for the tunnel. This should match the region of the target",
-				Optional:            false,
+				Required:            true,
 			},
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Example identifier", // TODO: Figure this out
