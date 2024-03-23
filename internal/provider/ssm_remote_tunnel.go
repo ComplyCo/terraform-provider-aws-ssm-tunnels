@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/complyco/terraform-provider-aws-ssm-tunnels/internal/ssmtunnels"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -20,7 +18,7 @@ func NewSSMRemoteTunnelDataSource() datasource.DataSource {
 
 // SSMRemoteTunnelDataSource defines the data source implementation.
 type SSMRemoteTunnelDataSource struct {
-	svc *ssm.Client
+	tracker *TunnelTracker
 }
 
 // SSMRemoteTunnelDataSourceModel describes the data source data model.
@@ -77,17 +75,17 @@ func (d *SSMRemoteTunnelDataSource) Configure(ctx context.Context, req datasourc
 		return
 	}
 
-	svc, ok := req.ProviderData.(*ssm.Client)
+	tracker, ok := req.ProviderData.(*TunnelTracker)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *TunnelTracker, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	d.svc = svc
+	d.tracker = tracker
 }
 
 func (d *SSMRemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -100,16 +98,15 @@ func (d *SSMRemoteTunnelDataSource) Read(ctx context.Context, req datasource.Rea
 		return
 	}
 
-	// TODO: Decide if this should be in the Configure step
-	// TODO: Decide if this needs its own context
-	err := ssmtunnels.StartRemoteTunnel(ctx, ssmtunnels.RemoteTunnelConfig{
-		Client:     d.svc,
-		Target:     data.Target.ValueString(),
-		Region:     data.Region.ValueString(),
-		RemoteHost: data.RemoteHost.ValueString(),
-		RemotePort: int(data.RemotePort.ValueInt64()),
-		LocalPort:  int(data.LocalPort.ValueInt64()),
-	})
+	err := d.tracker.StartTunnel(
+		ctx,
+		data.Id.ValueString(),
+		data.Target.ValueString(),
+		data.RemoteHost.ValueString(),
+		data.RemotePort.ValueInt64(),
+		data.LocalPort.ValueInt64(),
+		data.Region.ValueString(),
+	)
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -117,8 +114,30 @@ func (d *SSMRemoteTunnelDataSource) Read(ctx context.Context, req datasource.Rea
 			fmt.Sprintf("Error: %s", err),
 		)
 	}
-	// TODO: Figure out how to store a reference to the tunnel so it can be stopped later
 
-	// Save data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	// Wait for the tunnel to be ready
+	tunnelInfo, exists := d.tracker.Tunnels[data.Id.ValueString()]
+	if !exists {
+		resp.Diagnostics.AddError(
+			"Tunnel not found",
+			"The requested tunnel does not exist in the tracker.",
+		)
+		return
+	}
+
+	// This blocks until the tunnel is ready or the context is done
+	select {
+	case <-tunnelInfo.ReadySignal:
+		// Tunnel is ready. Proceed.
+		// time.Sleep(10 * time.Second)
+		// Save data into Terraform state
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	case <-ctx.Done():
+		// Context was cancelled or timed out. Handle accordingly.
+		resp.Diagnostics.AddError(
+			"Context cancelled or timed out",
+			"The operation was cancelled or timed out before the tunnel became ready.",
+		)
+		return
+	}
 }
