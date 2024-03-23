@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/complyco/terraform-provider-aws-ssm-tunnels/internal/ssmtunnels"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-provider-scaffolding-framework/internal/ssmtunnels"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
