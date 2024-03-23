@@ -42,7 +42,7 @@ jobs:
 
       - name: Copy and rename terraform-registry-manifest.json
         run: |
-          PROJECT_NAME=terraform-provider
+          PROJECT_NAME=terraform-provider-aws-ssm-tunnels
           VERSION=$(git describe --tags | sed 's/^v//')
           cp terraform-registry-manifest.json dist/${PROJECT_NAME}_${VERSION}_manifest.json
         shell: bash
