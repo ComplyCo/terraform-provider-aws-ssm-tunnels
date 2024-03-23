@@ -106,7 +106,7 @@ func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.Conf
 		}
 	} else {
 		awsCfg, err = config.LoadDefaultConfig(ctx,
-			config.WithRegion(data.Region.String()),
+			config.WithRegion(data.Region.ValueString()),
 			config.WithCredentialsProvider(
 				credentials.NewStaticCredentialsProvider(
 					data.AccessKey.ValueString(),
