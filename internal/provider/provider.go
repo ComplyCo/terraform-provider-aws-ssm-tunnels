@@ -49,10 +49,12 @@ func (p *AwsSSMTunnelsProvider) Schema(ctx context.Context, req provider.SchemaR
 			},
 			"aws_key": schema.StringAttribute{
 				MarkdownDescription: "The AWS Access Key ID to use for the SSM tunnel",
+				Sensitive:           true,
 				Optional:            false,
 			},
 			"aws_secret": schema.StringAttribute{
 				MarkdownDescription: "The AWS Secret Access Key to use for the SSM tunnel",
+				Sensitive:           true,
 				Optional:            false,
 			},
 			// TODO: Add session token

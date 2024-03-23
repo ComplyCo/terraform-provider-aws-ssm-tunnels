@@ -100,6 +100,7 @@ func (d *SSMRemoteTunnelDataSource) Read(ctx context.Context, req datasource.Rea
 		return
 	}
 
+	// TODO: Decide if this should be in the Configure step
 	err := ssmtunnels.StartRemoteTunnel(context.Background(), ssmtunnels.RemoteTunnelConfig{
 		Client:     d.svc,
 		Target:     data.Target.ValueString(),
