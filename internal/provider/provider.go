@@ -7,7 +7,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -29,9 +31,11 @@ type AwsSSMTunnelsProvider struct {
 
 // AwsSSMTunnelsProviderModel describes the provider data model.
 type AwsSSMTunnelsProviderModel struct {
-	AwsRegion types.String `tfsdk:"aws_region"`
-	AwsKey    types.String `tfsdk:"aws_key"`
-	AwsSecret types.String `tfsdk:"aws_secret"`
+	Region            types.String   `tfsdk:"region"`
+	AccessKey         types.String   `tfsdk:"access_key"`
+	SecretKey         types.String   `tfsdk:"secret_key"`
+	SessionToken      types.String   `tfsdk:"token"`
+	SharedConfigFiles []types.String `tfsdk:"shared_config_files"`
 }
 
 func (p *AwsSSMTunnelsProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -43,21 +47,31 @@ func (p *AwsSSMTunnelsProvider) Schema(ctx context.Context, req provider.SchemaR
 	// TODO: Figure out how to support more auth modes. Maybe import from the AWS provider
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"aws_region": schema.StringAttribute{
-				MarkdownDescription: "The AWS region to use for the SSM tunnel",
-				Optional:            false,
+			"region": schema.StringAttribute{
+				Optional: true,
+				Description: "The region where AWS operations will take place. Examples\n" +
+					"are us-east-1, us-west-2, etc.",
 			},
-			"aws_key": schema.StringAttribute{
-				MarkdownDescription: "The AWS Access Key ID to use for the SSM tunnel",
-				Sensitive:           true,
-				Optional:            false,
+			"access_key": schema.StringAttribute{
+				Optional: true,
+				Description: "The access key for API operations. You can retrieve this\n" +
+					"from the 'Security & Credentials' section of the AWS console.",
 			},
-			"aws_secret": schema.StringAttribute{
-				MarkdownDescription: "The AWS Secret Access Key to use for the SSM tunnel",
-				Sensitive:           true,
-				Optional:            false,
+			"secret_key": schema.StringAttribute{
+				Optional: true,
+				Description: "The secret key for API operations. You can retrieve this\n" +
+					"from the 'Security & Credentials' section of the AWS console.",
 			},
-			// TODO: Add session token
+			"token": schema.StringAttribute{
+				Optional: true,
+				Description: "session token. A session token is only required if you are\n" +
+					"using temporary security credentials.",
+			},
+			"shared_config_files": schema.ListAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
+				Description: "List of paths to shared config files. If not set, defaults to [~/.aws/config].",
+			},
 		},
 	}
 }
@@ -71,19 +85,45 @@ func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.Conf
 		return
 	}
 
-	// config.Config{
-	// 	Region: data.AwsRegion.String(),
-	// 	Credentials: config.Credentials{
+	var awsCfg aws.Config
+	var err error
+	if len(data.SharedConfigFiles) > 0 {
+		sharedConfigFilesAsString := []string{}
+		for _, path := range data.SharedConfigFiles {
+			sharedConfigFilesAsString = append(sharedConfigFilesAsString, path.ValueString())
+		}
 
-	// }
-
-	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(data.AwsRegion.String()))
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to load AWS configuration",
-			fmt.Sprintf("Error: %s", err),
+		awsCfg, err = config.LoadDefaultConfig(ctx,
+			config.WithSharedConfigFiles(sharedConfigFilesAsString),
 		)
+
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to load AWS configuration",
+				fmt.Sprintf("Error: %s", err),
+			)
+			return
+		}
+	} else {
+		awsCfg, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(data.Region.String()),
+			config.WithCredentialsProvider(
+				credentials.NewStaticCredentialsProvider(
+					data.AccessKey.ValueString(),
+					data.SecretKey.ValueString(),
+					data.SessionToken.ValueString(), // NOTE: SessionToken can be an empty string
+				),
+			),
+		)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to load AWS configuration",
+				fmt.Sprintf("Error: %s", err),
+			)
+			return
+		}
 	}
+
 	svc := ssm.NewFromConfig(awsCfg)
 	// NOTE: We should make a "client" struct which hides the SSM client, and has a method to start a tunnel and it keeps track of the tunnel session
 	// It should also handle the cancellation via context signalling
