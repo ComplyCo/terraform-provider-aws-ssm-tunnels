@@ -40,6 +40,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
 
+      - name: Copy and rename terraform-registry-manifest.json
+        run: |
+          PROJECT_NAME=terraform-provider
+          VERSION=$(git describe --tags | sed 's/^v//')
+          cp terraform-registry-manifest.json dist/${PROJECT_NAME}_${VERSION}_manifest.json
+        shell: bash
+
       - name: Publish provider
         uses: thechrisjohnson/terraform-cloud-provider-publish@9c741f7c267fd8c1049089dbcc788eb83a1b0b69 # v1.3
         with:
