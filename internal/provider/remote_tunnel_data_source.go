@@ -29,15 +29,6 @@ type SSMRemoteTunnelDataSourceModel struct {
 	RemoteHost types.String `tfsdk:"remote_host"`
 	RemotePort types.Int64  `tfsdk:"remote_port"`
 	LocalPort  types.Int64  `tfsdk:"local_port"`
-	Region     types.String `tfsdk:"region"`
-	Id         types.String `tfsdk:"id"`
-}
-
-type SSMRemoteTunnelDataSourceModelOutput struct {
-	Target     types.String `tfsdk:"target"`
-	RemoteHost types.String `tfsdk:"remote_host"`
-	RemotePort types.Int64  `tfsdk:"remote_port"`
-	LocalPort  types.Int64  `tfsdk:"local_port"`
 	LocalHost  types.String `tfsdk:"local_host"`
 	Region     types.String `tfsdk:"region"`
 	Id         types.String `tfsdk:"id"`
@@ -64,9 +55,14 @@ func (d *RemoteTunnelDataSource) Schema(ctx context.Context, req datasource.Sche
 				MarkdownDescription: "The port number of the remote host",
 				Required:            true,
 			},
+			"local_host": schema.StringAttribute{
+				MarkdownDescription: "The DNS name or IP address of the local host",
+				Computed:            true,
+			},
 			"local_port": schema.Int64Attribute{
 				MarkdownDescription: "The local port number to use for the tunnel",
 				Optional:            true,
+				Computed:            true,
 			},
 			"region": schema.StringAttribute{
 				MarkdownDescription: "The AWS region to use for the tunnel. This should match the region of the target",
@@ -155,16 +151,10 @@ func (d *RemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRe
 	case <-tunnelInfo.ReadySignal:
 		// Tunnel is ready. Proceed.
 		// Save data into Terraform state
-		output := SSMRemoteTunnelDataSourceModelOutput{
-			Target:     data.Target,
-			RemoteHost: data.RemoteHost,
-			RemotePort: data.RemotePort,
-			LocalPort:  basetypes.NewInt64Value(int64(port)),
-			LocalHost:  basetypes.NewStringValue("127.0.0.1"),
-			Region:     data.Region,
-			Id:         data.Id,
-		}
-		resp.Diagnostics.Append(resp.State.Set(ctx, &output)...)
+		data.LocalPort = basetypes.NewInt64Value(int64(port))
+		data.LocalHost = basetypes.NewStringValue("127.0.0.1")
+
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 	case <-ctx.Done():
 		// Context was cancelled or timed out. Handle accordingly.
 		resp.Diagnostics.AddError(
