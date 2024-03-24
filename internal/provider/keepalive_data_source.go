@@ -10,30 +10,30 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ datasource.DataSource = &DependDataSource{}
+var _ datasource.DataSource = &KeepaliveDataSource{}
 
-func NewDependDataSource() datasource.DataSource {
-	return &DependDataSource{}
+func NewKeepaliveDataSource() datasource.DataSource {
+	return &KeepaliveDataSource{}
 }
 
-// DependDataSource defines the data source implementation.
-type DependDataSource struct {
+// KeepaliveDataSource defines the data source implementation.
+type KeepaliveDataSource struct {
 	tracker *TunnelTracker
 }
 
-// DependDataSourceModel describes the data source data model.
-type DependDataSourceModel struct {
+// KeepaliveDataSourceModel describes the data source data model.
+type KeepaliveDataSourceModel struct {
 	Id types.String `tfsdk:"id"`
 }
 
-func (d *DependDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_depend"
+func (d *KeepaliveDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_keepalive"
 }
 
-func (d *DependDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *KeepaliveDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "Data source used to track lifecycle",
+		MarkdownDescription: "Data source used to keep the provider and tunnels alive",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -44,7 +44,7 @@ func (d *DependDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 	}
 }
 
-func (d *DependDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *KeepaliveDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -63,8 +63,8 @@ func (d *DependDataSource) Configure(ctx context.Context, req datasource.Configu
 	d.tracker = tracker
 }
 
-func (d *DependDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data DependDataSourceModel
+func (d *KeepaliveDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data KeepaliveDataSourceModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
