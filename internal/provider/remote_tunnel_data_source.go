@@ -109,7 +109,7 @@ func (d *RemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRe
 	var err error
 	port = int(data.LocalPort.ValueInt64())
 	if port == 0 {
-		port, err = ports.FindOpenPort(9000, 65535)
+		port, err = ports.FindOpenPort(16000, 26000)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Failed to find open port",
