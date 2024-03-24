@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/complyco/terraform-provider-aws-ssm-tunnels/internal/ports"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -65,7 +66,7 @@ func (d *RemoteTunnelDataSource) Schema(ctx context.Context, req datasource.Sche
 			},
 			"local_port": schema.Int64Attribute{
 				MarkdownDescription: "The local port number to use for the tunnel",
-				Required:            true,
+				Optional:            true,
 			},
 			"region": schema.StringAttribute{
 				MarkdownDescription: "The AWS region to use for the tunnel. This should match the region of the target",
@@ -108,13 +109,27 @@ func (d *RemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	err := d.tracker.StartTunnel(
+	var port int
+	var err error
+	port = int(data.LocalPort.ValueInt64())
+	if port == 0 {
+		port, err = ports.FindOpenPort(9000, 65535)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to find open port",
+				fmt.Sprintf("Error: %s", err),
+			)
+			return
+		}
+	}
+
+	err = d.tracker.StartTunnel(
 		ctx,
 		data.Id.ValueString(),
 		data.Target.ValueString(),
 		data.RemoteHost.ValueString(),
-		data.RemotePort.ValueInt64(),
-		data.LocalPort.ValueInt64(),
+		int(data.RemotePort.ValueInt64()),
+		port,
 		data.Region.ValueString(),
 	)
 
@@ -144,7 +159,7 @@ func (d *RemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRe
 			Target:     data.Target,
 			RemoteHost: data.RemoteHost,
 			RemotePort: data.RemotePort,
-			LocalPort:  data.LocalPort,
+			LocalPort:  basetypes.NewInt64Value(int64(port)),
 			LocalHost:  basetypes.NewStringValue("127.0.0.1"),
 			Region:     data.Region,
 			Id:         data.Id,

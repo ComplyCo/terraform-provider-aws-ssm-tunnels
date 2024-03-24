@@ -41,7 +41,7 @@ func NewTunnelTracker(svc *ssm.Client) *TunnelTracker {
 	}
 }
 
-func (t *TunnelTracker) StartTunnel(ctx context.Context, id string, target string, remoteHost string, remotePort int64, localPort int64, region string) error {
+func (t *TunnelTracker) StartTunnel(ctx context.Context, id string, target string, remoteHost string, remotePort int, localPort int, region string) error {
 	t.mu.Lock()
 	tunnel, ok := t.Tunnels[id]
 	if ok && tunnel.IsRunning {
@@ -61,7 +61,7 @@ func (t *TunnelTracker) StartTunnel(ctx context.Context, id string, target strin
 		// Setup new tunnel info
 		t.Tunnels[id] = &TunnelInfo{
 			IsRunning:   true,
-			LocalPort:   int(localPort),
+			LocalPort:   localPort,
 			ReadySignal: make(chan bool, 1), // Buffered channel
 		}
 	}
@@ -78,8 +78,8 @@ func (t *TunnelTracker) StartTunnel(ctx context.Context, id string, target strin
 				Target:     target,
 				Region:     region,
 				RemoteHost: remoteHost,
-				RemotePort: int(remotePort),
-				LocalPort:  int(localPort),
+				RemotePort: remotePort,
+				LocalPort:  localPort,
 			})
 			errChan <- err
 		}()
