@@ -133,8 +133,7 @@ type AwsSSMTunnelsProviderModel struct {
 }
 
 func (p *AwsSSMTunnelsProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	// resp.TypeName = "aws_ssm_tunnels"
-	resp.TypeName = "cc"
+	resp.TypeName = "awsssmtunnels"
 	resp.Version = p.version
 }
 
