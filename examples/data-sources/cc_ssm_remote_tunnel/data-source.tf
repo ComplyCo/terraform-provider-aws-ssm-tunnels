@@ -14,7 +14,7 @@
 ##############################################
 
 provider "kubernetes" {
-  host                   = "https://127.0.0.1:${data.cc_ssm_remote_tunnel.rds.local_port}"
+  host                   = "https://${data.awsssmtunnels_remote_tunnel.eks.local_host}:${data.awsssmtunnels_remote_tunnel.eks.local_port}"
   tls_server_name        = replace(aws_eks_cluster.example.endpoint, "https://", "")
   cluster_ca_certificate = base64decode(aws_eks_cluster.example.certificate_authority.0.data)
   token                  = data.aws_eks_cluster_auth.example.token
@@ -24,18 +24,17 @@ data "aws_eks_cluster_auth" "example" {
   name = aws_eks_cluster.example.name
 }
 
-data "cc_ssm_remote_tunnel" "eks" {
+data "awsssmtunnels_remote_tunnel" "eks" {
   target      = "i-123456789"
   remote_host = replace(aws_eks_cluster.example.endpoint, "https://", "")
   remote_port = 443
-  local_port  = 7363
   region      = "us-east-1"
 }
 
-// NOTE: We use the *_depend data resource to prevent the provider from being shut down prematurely
+// NOTE: We use the *_keepalive data resource to prevent the provider from being shut down prematurely
 // We need the tunnel to stay up until all the resources for the providers using the tunnel are done
 // reading or writing from it.
-data "cc_depend" "eks" {
+data "awsssmtunnels_keepalive" "eks" {
   depends_on = [
     kubernetes_secret.one,
     kubernetes_secret.two,
@@ -50,23 +49,22 @@ data "cc_depend" "eks" {
 ######## RDS Example #########################
 ##############################################
 
-data "cc_ssm_remote_tunnel" "rds" {
+data "awsssmtunnels_remote_tunnel" "rds" {
   target      = "i-123456789"
   remote_host = aws_rds_cluster.example.endpoint
   remote_port = 5432 // This is a PostgreSQL RDS cluster example
-  local_port  = 5000
   region      = "us-east-1"
 }
 
-data "cc_depend" "rds" {
+data "awsssmtunnels_keepalive" "rds" {
   depends_on = [
     postgresql_tables.my_tables,
   ]
 }
 
 provider "postgresql" {
-  host            = "127.0.0.1"
-  port            = data.cc_ssm_remote_tunnel.rds.local_port
+  host            = data.awsssmtunnels_remote_tunnel.rds.local_host
+  port            = data.awsssmtunnels_remote_tunnel.rds.local_port
   database        = "mydb"
   username        = var.pg_user
   password        = var.pg_password
