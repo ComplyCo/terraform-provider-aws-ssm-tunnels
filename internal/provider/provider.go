@@ -234,7 +234,7 @@ func (p *AwsSSMTunnelsProvider) Resources(ctx context.Context) []func() resource
 
 func (p *AwsSSMTunnelsProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewSSMRemoteTunnelDataSource,
+		NewRemoteTunnelDataSource,
 		NewKeepaliveDataSource,
 	}
 }

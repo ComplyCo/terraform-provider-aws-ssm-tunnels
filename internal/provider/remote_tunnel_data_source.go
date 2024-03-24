@@ -10,14 +10,14 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ datasource.DataSource = &SSMRemoteTunnelDataSource{}
+var _ datasource.DataSource = &RemoteTunnelDataSource{}
 
-func NewSSMRemoteTunnelDataSource() datasource.DataSource {
-	return &SSMRemoteTunnelDataSource{}
+func NewRemoteTunnelDataSource() datasource.DataSource {
+	return &RemoteTunnelDataSource{}
 }
 
-// SSMRemoteTunnelDataSource defines the data source implementation.
-type SSMRemoteTunnelDataSource struct {
+// RemoteTunnelDataSource defines the data source implementation.
+type RemoteTunnelDataSource struct {
 	tracker *TunnelTracker
 }
 
@@ -31,13 +31,12 @@ type SSMRemoteTunnelDataSourceModel struct {
 	Id         types.String `tfsdk:"id"`
 }
 
-func (d *SSMRemoteTunnelDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_ssm_remote_tunnel"
+func (d *RemoteTunnelDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_remote_tunnel"
 }
 
-func (d *SSMRemoteTunnelDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *RemoteTunnelDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		// This description is used by the documentation generator and the language server.
 		MarkdownDescription: "AWSM SSM Remote Tunnel data source",
 
 		Attributes: map[string]schema.Attribute{
@@ -69,7 +68,7 @@ func (d *SSMRemoteTunnelDataSource) Schema(ctx context.Context, req datasource.S
 	}
 }
 
-func (d *SSMRemoteTunnelDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *RemoteTunnelDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -88,7 +87,7 @@ func (d *SSMRemoteTunnelDataSource) Configure(ctx context.Context, req datasourc
 	d.tracker = tracker
 }
 
-func (d *SSMRemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *RemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data SSMRemoteTunnelDataSourceModel
 
 	// Read Terraform configuration data into the model
@@ -129,7 +128,6 @@ func (d *SSMRemoteTunnelDataSource) Read(ctx context.Context, req datasource.Rea
 	select {
 	case <-tunnelInfo.ReadySignal:
 		// Tunnel is ready. Proceed.
-		// time.Sleep(10 * time.Second)
 		// Save data into Terraform state
 		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 	case <-ctx.Done():
