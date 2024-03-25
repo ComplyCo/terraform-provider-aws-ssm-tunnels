@@ -130,6 +130,7 @@ type AwsSSMTunnelsProviderModel struct {
 	SecretKey         types.String   `tfsdk:"secret_key"`
 	SessionToken      types.String   `tfsdk:"token"`
 	SharedConfigFiles []types.String `tfsdk:"shared_config_files"`
+	Profile           types.String   `tfsdk:"profile"`
 }
 
 func (p *AwsSSMTunnelsProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -166,6 +167,10 @@ func (p *AwsSSMTunnelsProvider) Schema(ctx context.Context, req provider.SchemaR
 				Optional:    true,
 				Description: "List of paths to shared config files. If not set, defaults to [~/.aws/config].",
 			},
+			"profile": schema.StringAttribute{
+				Optional:    true,
+				Description: "The AWS profile to use",
+			},
 		},
 	}
 }
@@ -187,8 +192,13 @@ func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.Conf
 			sharedConfigFilesAsString = append(sharedConfigFilesAsString, path.ValueString())
 		}
 
+		profile := "default"
+		if data.Profile.ValueString() != "" {
+			profile = data.Profile.ValueString()
+		}
 		awsCfg, err = config.LoadDefaultConfig(ctx,
 			config.WithSharedConfigFiles(sharedConfigFilesAsString),
+			config.WithSharedConfigProfile(profile),
 		)
 
 		if err != nil {
