@@ -197,6 +197,7 @@ func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.Conf
 			profile = data.Profile.ValueString()
 		}
 		awsCfg, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(data.Region.ValueString()),
 			config.WithSharedConfigFiles(sharedConfigFilesAsString),
 			config.WithSharedConfigProfile(profile),
 		)
