@@ -46,11 +46,3 @@ jobs:
           VERSION=$(git describe --tags | sed 's/^v//')
           cp terraform-registry-manifest.json dist/${PROJECT_NAME}_${VERSION}_manifest.json
         shell: bash
-
-      - name: Publish provider
-        uses: thechrisjohnson/terraform-cloud-provider-publish@9c741f7c267fd8c1049089dbcc788eb83a1b0b69 # v1.3
-        with:
-          organization-name: ComplyCo
-          organization-api-token: ${{ secrets.TF_CLOUD_TOKEN }}
-          provider-directory: dist
-          gpg-key: ${{ secrets.GPG_PUBLIC_KEY }}
