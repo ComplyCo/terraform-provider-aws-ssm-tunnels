@@ -47,6 +47,7 @@ are us-east-1, us-west-2, etc.
 
 - `access_key` (String) The access key for API operations. You can retrieve this
 from the 'Security & Credentials' section of the AWS console.
+- `profile` (String) The AWS profile to use
 - `secret_key` (String) The secret key for API operations. You can retrieve this
 from the 'Security & Credentials' section of the AWS console.
 - `shared_config_files` (List of String) List of paths to shared config files. If not set, defaults to [~/.aws/config].
