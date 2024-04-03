@@ -28,6 +28,12 @@ type TunnelInfo struct {
 	ReadySignal chan bool // Used to signal when the tunnel is ready
 }
 
+type OtherTunnelInfo struct {
+	LocalPort   int
+	LocalHost   string
+	ReadySignal chan bool // Used to signal when the tunnel is ready
+}
+
 type TunnelTracker struct {
 	mu      sync.Mutex
 	Tunnels map[string]*TunnelInfo
@@ -41,74 +47,44 @@ func NewTunnelTracker(svc *ssm.Client) *TunnelTracker {
 	}
 }
 
-func (t *TunnelTracker) StartTunnel(ctx context.Context, id string, target string, remoteHost string, remotePort int, localPort int, region string) error {
-	t.mu.Lock()
-	tunnel, ok := t.Tunnels[id]
-	if ok && tunnel.IsRunning {
-		t.mu.Unlock()
-		// If already running, wait for the ready signal or continue immediately if already signaled
-		select {
-		case <-tunnel.ReadySignal:
-			// Tunnel is ready
-			return nil
-		default:
-			// Tunnel was already marked as ready
-			return nil
-		}
+// Ignore the tracker for now
+func (t *TunnelTracker) StartTunnel(ctx context.Context, id string, target string, remoteHost string, remotePort int, localPort int, region string) (*OtherTunnelInfo, error) {
+	tunnel := &OtherTunnelInfo{
+		LocalPort: localPort,
+		LocalHost: "127.0.0.1",
 	}
 
-	if !ok {
-		// Setup new tunnel info
-		t.Tunnels[id] = &TunnelInfo{
-			IsRunning:   true,
-			LocalPort:   localPort,
-			ReadySignal: make(chan bool, 1), // Buffered channel
-		}
-	}
-	tunnel = t.Tunnels[id]
-	t.mu.Unlock()
-
+	errChan := make(chan error, 1)
 	// Start the tunnel in a separate goroutine
 	go func() {
-		errChan := make(chan error, 1)
-		go func() {
-			// Attempt to start the tunnel
-			err := ssmtunnels.StartRemoteTunnel(context.Background(), ssmtunnels.RemoteTunnelConfig{
-				Client:     t.Svc,
-				Target:     target,
-				Region:     region,
-				RemoteHost: remoteHost,
-				RemotePort: remotePort,
-				LocalPort:  localPort,
-			})
-			errChan <- err
-		}()
-
-		// Wait for either an error to happen, or assume "up" after 2 seconds
-		select {
-		case err := <-errChan:
-			if err != nil {
-				// Failed to start the tunnel, handle the error
-				log.Printf("Error starting tunnel: %v", err)
-				t.mu.Lock()
-				tunnel.IsRunning = false
-				t.mu.Unlock()
-				close(tunnel.ReadySignal) // Ensure we signal that the attempt has concluded, even in failure
-			} else {
-				// Tunnel started without error, consider it "up"
-				t.mu.Lock()
-				tunnel.ReadySignal <- true
-				t.mu.Unlock()
-			}
-		case <-time.After(10 * time.Second):
-			// No error within 10 seconds, consider the tunnel "up"
-			t.mu.Lock()
-			tunnel.ReadySignal <- true
-			t.mu.Unlock()
-		}
+		// Attempt to start the tunnel
+		err := ssmtunnels.StartRemoteTunnel(context.Background(), ssmtunnels.RemoteTunnelConfig{
+			Client:     t.Svc,
+			Target:     target,
+			Region:     region,
+			RemoteHost: remoteHost,
+			RemotePort: remotePort,
+			LocalPort:  localPort,
+		})
+		errChan <- err
 	}()
 
-	return nil
+	// Wait for either an error to happen, or assume "up" after 10 seconds
+	select {
+	case err := <-errChan:
+		if err != nil {
+			// Failed to start the tunnel, handle the error
+			log.Printf("Error starting tunnel: %v", err)
+			close(errChan) // Ensure we signal that the attempt has concluded, even in failure
+			return nil, err
+		} else {
+			// Tunnel started without error, consider it "up"
+			return tunnel, nil
+		}
+	case <-time.After(10 * time.Second):
+		// No error within 10 seconds, consider the tunnel "up"
+		return tunnel, nil
+	}
 }
 
 // NOOP CHANGE

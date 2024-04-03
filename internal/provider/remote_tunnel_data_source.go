@@ -119,7 +119,7 @@ func (d *RemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRe
 		}
 	}
 
-	err = d.tracker.StartTunnel(
+	tunnelInfo, err := d.tracker.StartTunnel(
 		ctx,
 		data.Id.ValueString(),
 		data.Target.ValueString(),
@@ -134,33 +134,11 @@ func (d *RemoteTunnelDataSource) Read(ctx context.Context, req datasource.ReadRe
 			"Failed to start remote tunnel",
 			fmt.Sprintf("Error: %s", err),
 		)
-	}
-
-	// Wait for the tunnel to be ready
-	tunnelInfo, exists := d.tracker.Tunnels[data.Id.ValueString()]
-	if !exists {
-		resp.Diagnostics.AddError(
-			"Tunnel not found",
-			"The requested tunnel does not exist in the tracker.",
-		)
 		return
 	}
 
-	// This blocks until the tunnel is ready or the context is done
-	select {
-	case <-tunnelInfo.ReadySignal:
-		// Tunnel is ready. Proceed.
-		// Save data into Terraform state
-		data.LocalPort = basetypes.NewInt64Value(int64(port))
-		data.LocalHost = basetypes.NewStringValue("127.0.0.1")
+	data.LocalPort = basetypes.NewInt64Value(int64(tunnelInfo.LocalPort))
+	data.LocalHost = basetypes.NewStringValue(tunnelInfo.LocalHost)
 
-		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-	case <-ctx.Done():
-		// Context was cancelled or timed out. Handle accordingly.
-		resp.Diagnostics.AddError(
-			"Context cancelled or timed out",
-			"The operation was cancelled or timed out before the tunnel became ready.",
-		)
-		return
-	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
