@@ -215,7 +215,9 @@ func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.Conf
 }
 
 func (p *AwsSSMTunnelsProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+	return []func() resource.Resource{
+		NewRemoteTunnelResource,
+	}
 }
 
 func (p *AwsSSMTunnelsProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
