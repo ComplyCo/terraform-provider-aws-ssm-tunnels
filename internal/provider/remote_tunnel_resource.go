@@ -29,6 +29,7 @@ type RemoteTunnelResource struct {
 
 // SSMRemoteTunnelDataSourceModel describes the data source data model.
 type SSMRemoteTunnelResourceModel struct {
+	RefreshId  types.String `tfsdk:"refresh_id"`
 	Target     types.String `tfsdk:"target"`
 	RemoteHost types.String `tfsdk:"remote_host"`
 	RemotePort types.Int64  `tfsdk:"remote_port"`
@@ -47,6 +48,10 @@ func (d *RemoteTunnelResource) Schema(ctx context.Context, req resource.SchemaRe
 		MarkdownDescription: "AWSM SSM Remote Tunnel data source",
 
 		Attributes: map[string]schema.Attribute{
+			"refresh_id": schema.StringAttribute{
+				MarkdownDescription: "Any value as this will trigger a refresh",
+				Required:            true,
+			},
 			"target": schema.StringAttribute{
 				MarkdownDescription: "The target to start the remote tunnel, such as an instance ID",
 				Required:            true,
@@ -100,7 +105,7 @@ func (d *RemoteTunnelResource) Configure(ctx context.Context, req resource.Confi
 }
 
 func (d *RemoteTunnelResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data SSMRemoteTunnelDataSourceModel
+	var data SSMRemoteTunnelResourceModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
@@ -149,7 +154,7 @@ func (d *RemoteTunnelResource) Create(ctx context.Context, req resource.CreateRe
 }
 
 func (d *RemoteTunnelResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data SSMRemoteTunnelDataSourceModel
+	var data SSMRemoteTunnelResourceModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -190,7 +195,7 @@ func (d *RemoteTunnelResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	data.Id = basetypes.NewStringValue(uuid.New().String())
+	data.RefreshId = basetypes.NewStringValue(uuid.New().String()) // NOTE: We always change this in order to force an update
 	data.LocalPort = basetypes.NewInt64Value(int64(tunnelInfo.LocalPort))
 	data.LocalHost = basetypes.NewStringValue(tunnelInfo.LocalHost)
 
@@ -198,7 +203,7 @@ func (d *RemoteTunnelResource) Read(ctx context.Context, req resource.ReadReques
 }
 
 func (d *RemoteTunnelResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data SSMRemoteTunnelDataSourceModel
+	var data SSMRemoteTunnelResourceModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
@@ -247,7 +252,7 @@ func (d *RemoteTunnelResource) Update(ctx context.Context, req resource.UpdateRe
 }
 
 func (d *RemoteTunnelResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data SSMRemoteTunnelDataSourceModel
+	var data SSMRemoteTunnelResourceModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
