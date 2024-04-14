@@ -24,12 +24,22 @@ data "aws_eks_cluster_auth" "example" {
   name = aws_eks_cluster.example.name
 }
 
+resource "null_resource" "trigger_refresh" {
+  triggers = {
+    always_change = "${timestamp()}"
+  }
+}
+
 resource "awsssmtunnels_remote_tunnel" "eks" {
   target      = "i-123456789"
   remote_host = replace(aws_eks_cluster.example.endpoint, "https://", "")
   remote_port = 443
   local_port  = 16534
   region      = "us-east-1"
+
+  lifecycle {
+    replace_triggered_by = [null_resource.trigger_refresh]
+  }
 }
 
 // NOTE: We use the *_keepalive data resource to prevent the provider from being shut down prematurely
@@ -57,6 +67,10 @@ resource "awsssmtunnels_remote_tunnel" "rds" {
   remote_port = 5432 // This is a PostgreSQL RDS cluster example
   local_port  = 17638
   region      = "us-east-1"
+
+  lifecycle {
+    replace_triggered_by = [null_resource.trigger_refresh]
+  }
 }
 
 data "awsssmtunnels_keepalive" "rds" {
