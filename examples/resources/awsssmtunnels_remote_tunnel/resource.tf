@@ -53,15 +53,12 @@ data "awsssmtunnels_keepalive" "eks" {
 ##############################################
 
 resource "awsssmtunnels_remote_tunnel" "rds" {
+  refresh_id  = "one" // Anything string can go here as this resource will always find a diff on this
   target      = "i-123456789"
   remote_host = aws_rds_cluster.example.endpoint
   remote_port = 5432 // This is a PostgreSQL RDS cluster example
   local_port  = 17638
   region      = "us-east-1"
-
-  lifecycle {
-    replace_triggered_by = [null_resource.trigger_refresh]
-  }
 }
 
 data "awsssmtunnels_keepalive" "rds" {
