@@ -48,6 +48,13 @@ resource "awsssmtunnels_remote_tunnel" "eks" {
   region      = "us-east-1"
 }
 
+// NOTE: The import is needed for the first plan, otherwise TF will hold off on the create until the Apply phase.
+// The import allows it to run in the very first plan.
+import {
+  id = "i-123456789|${replace(aws_eks_cluster.example.endpoint, "https://", "")}|443|16534|127.0.0.1|us-east-1"
+  to = awsssmtunnels_remote_tunnel.eks
+}
+
 // NOTE: We use the *_keepalive data resource to prevent the provider from being shut down prematurely
 // We need the tunnel to stay up until all the resources for the providers using the tunnel are done
 // reading or writing from it.
@@ -74,6 +81,11 @@ resource "awsssmtunnels_remote_tunnel" "rds" {
   remote_port = 5432 // This is a PostgreSQL RDS cluster example
   local_port  = 17638
   region      = "us-east-1"
+}
+
+import {
+  id = "<target>|<remote host>|<remote port>|<local port>|127.0.0.1|<region>"
+  to = awsssmtunnels_remote_tunnel.rds
 }
 
 data "awsssmtunnels_keepalive" "rds" {
