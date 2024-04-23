@@ -6,7 +6,7 @@ This provider's purpose is to make it possible to use AWS SSM port forwarding to
 
 Building this provider was a good learning experience for Terraform's framework of managing resources. The framework doesn't seem to have a concept of a provider "wrapper" were one provider can exist for the duration of another provider (in this case, the tunnel needs to stay open while the kubernetes, helm, postgres, ... provider is doing things with resources).
 
-In developing this provider, we saw that Terraform shut down the provider when the provider was "done" with its last resource. If we only configured `data.awsssmtunnels_remote_tunnel.rds` and no other resource, the provider would shut down as soon as the data resource returned with the local host+port for the tunnel. This would then shut down the tunnel before the kubernetes/helm/postgres/.... providers could use it.
+In developing this provider, we saw that Terraform shut down the provider when the provider was "done" with its last resource. If we only configured `resource.awsssmtunnels_remote_tunnel.rds` and no other resource, the provider would shut down as soon as the resource returned with the local host+port for the tunnel. This would then shut down the tunnel before the kubernetes/helm/postgres/.... providers could use it.
 
 To get around this we added the `data.awsssmtunnels_keepalive.rds` resource which requires the caller to pass in all resources for provider using the tunnel to a `depends_on` lifecycle hook. This is a pretty poor developer experience, but it was all we could come up with at the present for keeping the tunnel running until all the resources that needed it were finished using the tunnel.
 
