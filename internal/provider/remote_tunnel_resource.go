@@ -271,8 +271,22 @@ func (r *RemoteTunnelResource) ImportState(ctx context.Context, req resource.Imp
 	localPort := parts[2]
 	localHost := parts[3]
 
-	localPortInt, _ := strconv.Atoi(localPort)
-	remotePortInt, _ := strconv.Atoi(remotePort)
+	localPortInt, err := strconv.Atoi(localPort)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid import ID",
+			"Local port must be a valid integer",
+		)
+		return
+	}
+	remotePortInt, err := strconv.Atoi(remotePort)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid import ID",
+			"Remote port must be a valid integer",
+		)
+		return
+	}
 
 	resp.State.Set(ctx, &SSMRemoteTunnelResourceModel{
 		// TODO: Figure out if we need to set the ID here
