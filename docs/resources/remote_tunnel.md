@@ -76,15 +76,13 @@ data "awsssmtunnels_keepalive" "eks" {
 
 resource "awsssmtunnels_remote_tunnel" "rds" {
   refresh_id  = "one" // Anything string can go here as this resource will always find a diff on this
-  target      = "i-123456789"
   remote_host = aws_rds_cluster.example.endpoint
   remote_port = 5432 // This is a PostgreSQL RDS cluster example
   local_port  = 17638
-  region      = "us-east-1"
 }
 
 import {
-  id = "<target>|<remote host>|<remote port>|<local port>|127.0.0.1|<region>"
+  id = "<remote host>|<remote port>|<local port>|127.0.0.1"
   to = awsssmtunnels_remote_tunnel.rds
 }
 
@@ -117,10 +115,8 @@ data "postgresql_tables" "my_tables" {
 ### Required
 
 - `refresh_id` (String) Any value as this will trigger a refresh
-- `region` (String) The AWS region to use for the tunnel. This should match the region of the target
 - `remote_host` (String) The DNS name or IP address of the remote host
 - `remote_port` (Number) The port number of the remote host
-- `target` (String) The target to start the remote tunnel, such as an instance ID
 
 ### Optional
 
