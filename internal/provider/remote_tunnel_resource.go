@@ -25,17 +25,17 @@ func NewRemoteTunnelResource() resource.Resource {
 // RemoteTunnelResource defines the resource implementation.
 type RemoteTunnelResource struct {
 	tracker *TunnelTracker
+	region  string
+	target  string
 }
 
 // SSMRemoteTunnelDataSourceModel describes the data source data model.
 type SSMRemoteTunnelResourceModel struct {
 	RefreshId  types.String `tfsdk:"refresh_id"`
-	Target     types.String `tfsdk:"target"`
 	RemoteHost types.String `tfsdk:"remote_host"`
 	RemotePort types.Int64  `tfsdk:"remote_port"`
 	LocalPort  types.Int64  `tfsdk:"local_port"`
 	LocalHost  types.String `tfsdk:"local_host"`
-	Region     types.String `tfsdk:"region"`
 	Id         types.String `tfsdk:"id"`
 }
 
@@ -50,10 +50,6 @@ func (d *RemoteTunnelResource) Schema(ctx context.Context, req resource.SchemaRe
 		Attributes: map[string]schema.Attribute{
 			"refresh_id": schema.StringAttribute{
 				MarkdownDescription: "Any value as this will trigger a refresh",
-				Required:            true,
-			},
-			"target": schema.StringAttribute{
-				MarkdownDescription: "The target to start the remote tunnel, such as an instance ID",
 				Required:            true,
 			},
 			"remote_host": schema.StringAttribute{
@@ -73,10 +69,6 @@ func (d *RemoteTunnelResource) Schema(ctx context.Context, req resource.SchemaRe
 				Optional:            true,
 				Computed:            true,
 			},
-			"region": schema.StringAttribute{
-				MarkdownDescription: "The AWS region to use for the tunnel. This should match the region of the target",
-				Required:            true,
-			},
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Example identifier", // TODO: Figure this out
 				Computed:            true,
@@ -91,17 +83,19 @@ func (d *RemoteTunnelResource) Configure(ctx context.Context, req resource.Confi
 		return
 	}
 
-	tracker, ok := req.ProviderData.(*TunnelTracker)
+	configData, ok := req.ProviderData.(*ProvidedConfigData)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *TunnelTracker, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *ProvidedConfigData, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	d.tracker = tracker
+	d.tracker = configData.Tracker
+	d.region = configData.Region
+	d.target = configData.Target
 }
 
 func (d *RemoteTunnelResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -131,11 +125,11 @@ func (d *RemoteTunnelResource) Create(ctx context.Context, req resource.CreateRe
 	tunnelInfo, err := d.tracker.StartTunnel(
 		ctx,
 		data.Id.ValueString(),
-		data.Target.ValueString(),
+		d.target,
 		data.RemoteHost.ValueString(),
 		int(data.RemotePort.ValueInt64()),
 		port,
-		data.Region.ValueString(),
+		d.region,
 	)
 
 	if err != nil {
@@ -180,11 +174,11 @@ func (d *RemoteTunnelResource) Read(ctx context.Context, req resource.ReadReques
 	tunnelInfo, err := d.tracker.StartTunnel(
 		ctx,
 		data.Id.ValueString(),
-		data.Target.ValueString(),
+		d.target,
 		data.RemoteHost.ValueString(),
 		int(data.RemotePort.ValueInt64()),
 		port,
-		data.Region.ValueString(),
+		d.region,
 	)
 
 	if err != nil {
@@ -229,11 +223,11 @@ func (d *RemoteTunnelResource) Update(ctx context.Context, req resource.UpdateRe
 	tunnelInfo, err := d.tracker.StartTunnel(
 		ctx,
 		data.Id.ValueString(),
-		data.Target.ValueString(),
+		d.target,
 		data.RemoteHost.ValueString(),
 		int(data.RemotePort.ValueInt64()),
 		port,
-		data.Region.ValueString(),
+		d.region,
 	)
 
 	if err != nil {
@@ -265,19 +259,17 @@ func (d *RemoteTunnelResource) Delete(ctx context.Context, req resource.DeleteRe
 func (r *RemoteTunnelResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	parts := strings.Split(req.ID, "|")
 	// TODO: Decide if we need the local_host set. Also do we need the local_port?
-	if len(parts) != 6 {
+	if len(parts) != 4 {
 		resp.Diagnostics.AddError(
 			"Invalid import ID",
-			"Import ID must be in the format `target|remote_host|remote_port|local_port|local_host|region`",
+			"Import ID must be in the format `remote_host|remote_port|local_port|local_host`",
 		)
 		return
 	}
-	target := parts[0]
-	remoteHost := parts[1]
-	remotePort := parts[2]
-	localPort := parts[3]
-	localHost := parts[4]
-	region := parts[5]
+	remoteHost := parts[0]
+	remotePort := parts[1]
+	localPort := parts[2]
+	localHost := parts[3]
 
 	localPortInt, _ := strconv.Atoi(localPort)
 	remotePortInt, _ := strconv.Atoi(remotePort)
@@ -285,11 +277,9 @@ func (r *RemoteTunnelResource) ImportState(ctx context.Context, req resource.Imp
 	resp.State.Set(ctx, &SSMRemoteTunnelResourceModel{
 		// TODO: Figure out if we need to set the ID here
 		Id:         basetypes.NewStringValue(uuid.New().String()),
-		Target:     basetypes.NewStringValue(target),
 		RemoteHost: basetypes.NewStringValue(remoteHost),
 		RemotePort: basetypes.NewInt64Value(int64(remotePortInt)),
 		LocalPort:  basetypes.NewInt64Value(int64(localPortInt)),
 		LocalHost:  basetypes.NewStringValue(localHost),
-		Region:     basetypes.NewStringValue(region),
 	})
 }

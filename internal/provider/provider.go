@@ -99,6 +99,12 @@ type AwsSSMTunnelsProvider struct {
 	version string
 }
 
+type ProvidedConfigData struct {
+	Tracker *TunnelTracker
+	Region  string
+	Target  string
+}
+
 // AwsSSMTunnelsProviderModel describes the provider data model.
 type AwsSSMTunnelsProviderModel struct {
 	Region            types.String   `tfsdk:"region"`
@@ -107,6 +113,7 @@ type AwsSSMTunnelsProviderModel struct {
 	SessionToken      types.String   `tfsdk:"token"`
 	SharedConfigFiles []types.String `tfsdk:"shared_config_files"`
 	Profile           types.String   `tfsdk:"profile"`
+	Target            types.String   `tfsdk:"target"`
 }
 
 func (p *AwsSSMTunnelsProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -146,6 +153,10 @@ func (p *AwsSSMTunnelsProvider) Schema(ctx context.Context, req provider.SchemaR
 			"profile": schema.StringAttribute{
 				Optional:    true,
 				Description: "The AWS profile to use",
+			},
+			"target": schema.StringAttribute{
+				Required:    true,
+				Description: "The target to start the remote tunnel, such as an instance ID",
 			},
 		},
 	}
@@ -210,8 +221,13 @@ func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.Conf
 	// NOTE: We should make a "client" struct which hides the SSM client, and has a method to start a tunnel and it keeps track of the tunnel session
 	// It should also handle the cancellation via context signalling
 
-	resp.DataSourceData = tracker
-	resp.ResourceData = tracker
+	configData := &ProvidedConfigData{
+		Tracker: tracker,
+		Region:  data.Region.ValueString(),
+		Target:  data.Target.ValueString(),
+	}
+	resp.DataSourceData = configData
+	resp.ResourceData = configData
 }
 
 func (p *AwsSSMTunnelsProvider) Resources(ctx context.Context) []func() resource.Resource {

@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -18,7 +17,6 @@ func NewKeepaliveDataSource() datasource.DataSource {
 
 // KeepaliveDataSource defines the data source implementation.
 type KeepaliveDataSource struct {
-	tracker *TunnelTracker
 }
 
 // KeepaliveDataSourceModel describes the data source data model.
@@ -42,25 +40,6 @@ func (d *KeepaliveDataSource) Schema(ctx context.Context, req datasource.SchemaR
 			},
 		},
 	}
-}
-
-func (d *KeepaliveDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	// Prevent panic if the provider has not been configured.
-	if req.ProviderData == nil {
-		return
-	}
-
-	tracker, ok := req.ProviderData.(*TunnelTracker)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *TunnelTracker, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-
-		return
-	}
-
-	d.tracker = tracker
 }
 
 func (d *KeepaliveDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
