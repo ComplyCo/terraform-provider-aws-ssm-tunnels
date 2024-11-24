@@ -196,7 +196,8 @@ func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.Conf
 			)
 			return
 		}
-	} else {
+	} else if data.AccessKey.ValueString() != "" && data.SecretKey.ValueString() != "" {
+		// Load AWS configuration using static credentials if specified
 		awsCfg, err = config.LoadDefaultConfig(ctx,
 			config.WithRegion(data.Region.ValueString()),
 			config.WithCredentialsProvider(
@@ -207,6 +208,20 @@ func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.Conf
 				),
 			),
 		)
+
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to load AWS configuration",
+				fmt.Sprintf("Error: %s", err),
+			)
+			return
+		}
+	} else {
+		// Fallback to environment variables or SSO if no explicit configuration provided
+		awsCfg, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(data.Region.ValueString()),
+		)
+
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Failed to load AWS configuration",
