@@ -7,19 +7,19 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/complyco/terraform-provider-aws-ssm-tunnels/internal/ssmtunnels"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/complyco/terraform-provider-aws-ssm-tunnels/internal/ssmtunnels"
 )
 
 type TunnelInfo struct {
@@ -35,7 +35,6 @@ type OtherTunnelInfo struct {
 }
 
 type TunnelTracker struct {
-	mu      sync.Mutex
 	Tunnels map[string]*TunnelInfo
 	Svc     *ssm.Client
 }
@@ -47,7 +46,7 @@ func NewTunnelTracker(svc *ssm.Client) *TunnelTracker {
 	}
 }
 
-// Ignore the tracker for now
+// Ignore the tracker for now.
 func (t *TunnelTracker) StartTunnel(ctx context.Context, id string, target string, remoteHost string, remotePort int, localPort int, region string) (*OtherTunnelInfo, error) {
 	tunnel := &OtherTunnelInfo{
 		LocalPort: localPort,
