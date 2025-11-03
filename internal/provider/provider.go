@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -242,6 +243,7 @@ func (p *AwsSSMTunnelsProvider) Configure(ctx context.Context, req provider.Conf
 	}
 	resp.DataSourceData = configData
 	resp.ResourceData = configData
+	resp.EphemeralResourceData = configData
 }
 
 func (p *AwsSSMTunnelsProvider) Resources(ctx context.Context) []func() resource.Resource {
@@ -253,6 +255,12 @@ func (p *AwsSSMTunnelsProvider) Resources(ctx context.Context) []func() resource
 func (p *AwsSSMTunnelsProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewKeepaliveDataSource,
+	}
+}
+
+func (p *AwsSSMTunnelsProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
+	return []func() ephemeral.EphemeralResource{
+		NewRemoteTunnelEphemeralResource,
 	}
 }
 
